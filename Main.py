@@ -4,16 +4,17 @@ import sys
 from threading import Thread, Lock
 import random
 import time
+import threading
 
 buffSize = int(sys.argv[1])
 productores = int(sys.argv[2])
 consumerFile = sys.argv[3]
 alternancia = sys.argv[4]
 
-Queque = [buffSize]
+#Queque = [buffSize]
 
 queue = []
-MAX_SIZE = 5 # Cambiar esto por lo que se ingresa
+MAX_SIZE = buffSize # Cambiar esto por lo que se ingresa
 cv = threading.Condition()
 
 def producer():
