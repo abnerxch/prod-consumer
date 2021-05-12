@@ -1,61 +1,84 @@
-import pandas as pd
-import os
-import sys
-from threading import Thread, Lock
-import random
+from threading import Thread, Condition
 import time
-
-buffSize = int(sys.argv[1])
-productores = int(sys.argv[2])
-consumerFile = sys.argv[3]
-alternancia = sys.argv[4]
-
-Queque = [buffSize]
+import random
+import sys
 
 queue = []
-MAX_SIZE = 5 # Cambiar esto por lo que se ingresa
-cv = threading.Condition()
+MAX_NUM = int(sys.argv[1])
+condition = Condition()
 
-def producer():
-    nums = range(5)
-    global queue
-    while True:
-        num = random.choice(nums)
 
-        cv.acquire()
+# Alternance
 
-        while len(queue) >= MAX_SIZE:
-                cv.wait()
+class ProducerThreadConcurrent(Thread):
+    def run(self):
+        nums = range(5)
+        global queue
+        while True:
+            condition.acquire()
+            if len(queue) == MAX_NUM:
+                print("Queue full, producer is waiting")
+                condition.wait()
+                print("Space in queue, Consumer notified the producer")
+            num = random.choice(nums)
+            queue.append(num)
+            print("Produced", num)
+            condition.notify()
+            condition.release()
+            time.sleep(random.random())
 
-        queue.append(num)
-        print("Produced", num, queue)
 
-        cv.notify()
+class ConsumerThreadConcurrent(Thread):
+    def run(self):
+        global queue
+        while True:
+            condition.acquire()
+            if not queue:
+                print("Nothing in queue, consumer is waiting")
+                condition.wait()
+                print("Producer added something to queue and notified the consumer")
+            num = queue.pop(0)
+            print("Consumed", num)
+            condition.notify()
+            condition.release()
+            time.sleep(random.random())
 
-        cv.release()
 
-        time.sleep(random.randrange(0, 3))
+class ProducerThreadNonConcurrent(Thread):
+    def run(self):
+        nums = range(5)
+        global queue
+        while True:
+            condition.acquire()
+            if len(queue) == MAX_NUM:
+                print("Queue full, producer is waiting")
 
-def consumer():
-    global queue
-    while True:
+                condition.notify()
+                condition.release()
+                condition.wait()
+                print("Space in queue, Consumer notified the producer")
+            num = random.choice(nums)
+            queue.append(num)
+            print("Produced", num)
+            time.sleep(random.random())
 
-        cv.acquire()
 
-        while len(queue) < 1:
-                cv.wait()
+class ConsumerThreadNonConcurrent(Thread):
+    def run(self):
+        global queue
+        while True:
+            condition.acquire()
+            if not queue:
+                print("Nothing in queue, consumer is waiting")
+                condition.notify()
+                condition.release()
+                condition.wait()
+                print("Producer added something to queue and notified the consumer")
+            num = queue.pop(0)
+            print("Consumed", num)
 
-        num = queue.pop(0)
-        print("Consumed", num, queue)
+            time.sleep(random.random())
 
-        cv.notify()
 
-        cv.release()
-
-        time.sleep(random.randrange(0, 3))
-
-producerThread = threading.Thread(target=producer)
-consumerThread = threading.Thread(target=consumer)
-
-producerThread.start()
-consumerThread.start()
+ProducerThreadNonConcurrent().start()
+ConsumerThreadNonConcurrent().start()
