@@ -6,6 +6,7 @@ import colored
 from colored import stylize
 import pandas as pd
 import csv
+import os
 
 
 class Personas:
@@ -138,11 +139,11 @@ class ConsumerThread(Thread):
                 if not queue:  # apagar thread si ya no hay nada en el buffer
                     print(stylize('queue is empty, and producer is stopped, thread shutting down...',
                                   colored.fg(mycolor)))
-
+                    os._exit(0)
                     item_ok.wait()
                     space_ok.notify()
                     # ANADI ESTO
-                    sys.exit()
+                    
                     # ^ANADI ESTO
                     qlock.release()
 
@@ -169,7 +170,7 @@ class ConsumerThread(Thread):
 # buffSize productores consumerFile Alternance
 # 1        2           3            4
 producerList = []
-ColorList = ['green', 'red']
+ColorList = ['green', 'red', 'blue', 'yellow', 'white', 'purple']
 for i in range(int(sys.argv[2])):
     producer = ProducerThread(name=ColorList[i], daemon=False)
     producerList.append(producer)
