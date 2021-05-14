@@ -1,4 +1,4 @@
-
+import sys
 from threading import Thread, Lock, Condition
 import time
 import random
@@ -32,24 +32,24 @@ class Produced:
 df2 = pd.read_csv('personas.csv')
 idp = df2.id
 date = df2.fecha
-
-df = pd.read_csv('compradores.csv')
-col1 = df.id
-col2 = df.bid_min
-col3 = df.bid_max
-
 personas = []
 compradores = []
-
-for a in range(len(col1)):
-    compradores.append(Compradores(int(col1[a]), int(col3[a]), int(col2[a])))
+try:
+    df = pd.read_csv(str(sys.argv[3]))
+    col1 = df.id
+    col2 = df.bid_min
+    col3 = df.bid_max
+    for a in range(len(col1)):
+        compradores.append(Compradores(int(col1[a]), int(col3[a]), int(col2[a])))
+except:
+    print("File not Found or Error in File Format")
 
 for b in range(len(idp)):
     personas.append(Personas(int(idp[b]), date[b]))
 
 queue = []
 produced = []
-CAPACITY = 100
+CAPACITY = int(sys.argv[1])
 
 qlock = Lock()
 item_ok = Condition(qlock)
@@ -78,8 +78,12 @@ class ProducerThread(Thread):
                 queue.append(person)  # insertar a mysql
                 print(stylize(len(queue), colored.fg(mycolor)))
             else:
+
                 item_ok.wait()  # Dejar de producir si ya no hay registros
                 item_ok.notify()
+                # ANADI ESTO
+                sys.exit()
+                # ^ANADI ESTO
                 qlock.release()
 
             item_ok.notify()
@@ -137,7 +141,11 @@ class ConsumerThread(Thread):
 
                     item_ok.wait()
                     space_ok.notify()
+                    # ANADI ESTO
+                    sys.exit()
+                    # ^ANADI ESTO
                     qlock.release()
+
                     print("SHUTTING DOWN THREAD")
 
                 else:  # crear lead
@@ -158,23 +166,25 @@ class ConsumerThread(Thread):
                     time.sleep(1)
 
 
+# buffSize productores consumerFile Alternance
+# 1        2           3            4
 producerList = []
 ColorList = ['green', 'red']
-for i in range(2):
-    producer = ProducerThread(name=ColorList[i], daemon=True)
+for i in range(int(sys.argv[2])):
+    producer = ProducerThread(name=ColorList[i], daemon=False)
     producerList.append(producer)
     producer.start()
 
-consumerList = []
-for i in compradores:
-    consumer = ConsumerThread(i.idC, i.low, i.high, "blue")
-    producerList.append(consumer)
-    consumer.start()
-
-[producer.join() for producer in producerList]
-[consumer.join() for consumer in consumerList]
-
-print("DONE")
+try:
+    print("trying")
+    consumerList = []
+    for i in compradores:
+        consumer = ConsumerThread(i.idC, i.low, i.high, "blue")
+        producerList.append(consumer)
+        consumer.start()
+except:
+    print("No consumer file given, only producer threads will be generated")
+# print("DONE")
 # ConsumerThread(name='yellow', daemon=True).start()
 
 # for a in compradores:
