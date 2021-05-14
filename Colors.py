@@ -1,10 +1,11 @@
-import sys
+
 from threading import Thread, Lock, Condition
 import time
 import random
 import colored
 from colored import stylize
 import pandas as pd
+import csv
 
 
 class Personas:
@@ -21,10 +22,10 @@ class Compradores:
 
 
 class Produced:
-    def __init__(self, idP, idC, date, bid):
+    def __init__(self, idP, idC, fecha, bid):
         self.idP = idP
         self.idC = idC
-        self.date = date
+        self.fecha = fecha
         self.bid = bid
 
 
@@ -63,6 +64,7 @@ class ProducerThread(Thread):
 
         while True:
             qlock.acquire()
+
             while len(queue) >= CAPACITY:
                 print(stylize('queue is full, stop producing', colored.fg(mycolor)))
                 space_ok.wait()
@@ -70,13 +72,16 @@ class ProducerThread(Thread):
                 if len(queue) >= CAPACITY:
                     print(stylize('oops, someone filled the space before me', colored.fg(mycolor)))
 
-            if personas:
+            if personas:  # si todavia existen registros, produzco
                 person = personas.pop(0)
                 print(stylize(str(person.idP) + ' ' + str(person.date), colored.fg(mycolor)))
-                queue.append(person)
+                queue.append(person)  # insertar a mysql
                 print(stylize(len(queue), colored.fg(mycolor)))
             else:
-                space_ok.wait()
+                item_ok.wait()  # Dejar de producir si ya no hay registros
+                item_ok.notify()
+                qlock.release()
+
             item_ok.notify()
             qlock.release()
             time.sleep(0)
@@ -94,6 +99,7 @@ class ConsumerThread(Thread):
         global queue
         global produced
         global personas
+
         mycolor = self.name
         myid = self.myid
         myminbid = self.myminbid
@@ -107,11 +113,15 @@ class ConsumerThread(Thread):
                     item_ok.wait()
                     if not queue:
                         print(stylize('oops, someone consumed the food before me', colored.fg(mycolor)))
-                finalbid = random.randrange(myminbid, mymaxbid)
-                person = queue.pop(0)
+                finalbid = random.randrange(myminbid, mymaxbid)  # Crear lead
+                person = queue.pop(0)  # Sacar de Mysql
 
-                produced.append(Produced(person.idP, myid, person.date, finalbid))
+                with open('comprador.csv', 'a+') as final:
+                    writer = csv.writer(final)
+                    writer.writerow([person.idP, myid, person.date, finalbid, mycolor])
+                    final.close()
 
+                produced.append(Produced(person.idP, myid, person.date, finalbid))  # meter a archivo comprador
                 print(stylize("CONSUMED", colored.fg(mycolor)))
                 print(len(produced))
                 print(len(queue))
@@ -121,16 +131,22 @@ class ConsumerThread(Thread):
 
             if not personas:
                 qlock.acquire()
-                if not queue:
-                    print(stylize('queue is empty, and producer is stopped, thread shutting down...', colored.fg(mycolor)))
+                if not queue:  # apagar thread si ya no hay nada en el buffer
+                    print(stylize('queue is empty, and producer is stopped, thread shutting down...',
+                                  colored.fg(mycolor)))
+
                     item_ok.wait()
                     space_ok.notify()
                     qlock.release()
                     print("SHUTTING DOWN THREAD")
 
-                else:
+                else:  # crear lead
                     finalbid = random.randrange(myminbid, mymaxbid)
                     person = queue.pop(0)
+                    with open('comprador.csv', 'a+') as final:
+                        writer = csv.writer(final)
+                        writer.writerow([person.idP, myid, person.date, finalbid, mycolor])
+                        final.close()
 
                     produced.append(Produced(person.idP, myid, person.date, finalbid))
 
@@ -142,34 +158,27 @@ class ConsumerThread(Thread):
                     time.sleep(1)
 
 
+producerList = []
+ColorList = ['green', 'red']
+for i in range(2):
+    producer = ProducerThread(name=ColorList[i], daemon=True)
+    producerList.append(producer)
+    producer.start()
 
+consumerList = []
+for i in compradores:
+    consumer = ConsumerThread(i.idC, i.low, i.high, "blue")
+    producerList.append(consumer)
+    consumer.start()
 
-def StarThreads():
-    ProducerThread(name="green", daemon=True).start()
-    ProducerThread(name="red", daemon=True).start()
+[producer.join() for producer in producerList]
+[consumer.join() for consumer in consumerList]
 
-    for i in compradores:
-        consumer = ConsumerThread(i.idC, i.low, i.high, "blue")
-        consumer.start()
-
-
-
-    # ConsumerThread(name='yellow', daemon=True).start()
-
-
-StarThreads()
-print(len(produced))
-
+print("DONE")
+# ConsumerThread(name='yellow', daemon=True).start()
 
 # for a in compradores:
 # print(a.idC, a.low, a.high)
 
 # for c in personas:
 # print(c.idP, c.date)
-'''''
-try:
-    while True:
-        time.sleep(3)
-except KeyboardInterrupt:
-    print("Exiting")
-'''

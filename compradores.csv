@@ -3,3 +3,8 @@ id,comprador,bid_min,bid_max
 2,Honda,45,58
 3,Hyundai,52,62
 400,Tesla,33,160
+401,Mazda,1000,105050
+402,Honda,50,6000
+403,Subaru,51,6001
+404,Peshot,40,55
+405,volks,455,500
