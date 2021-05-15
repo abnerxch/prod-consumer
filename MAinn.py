@@ -1,7 +1,7 @@
 import sys
 from threading import Thread, Lock, Condition
 import time
-import random
+from random import random, randrange
 import colored
 from colored import stylize
 import pandas as pd
@@ -125,13 +125,13 @@ class ConsumerThread(Thread):
                     item_ok.wait()
                     if not queue:
                         print(stylize('oops, someone consumed the food before me', colored.fg(mycolor)))
-                finalbid = random.randrange(myminbid, mymaxbid)  # Crear lead
+                finalbid = randrange(myminbid, mymaxbid)  # Crear lead
                 person = queue.pop(0)  # Sacar de Mysql
 
                 with open('comprador.csv', 'a+') as final:
                     writer = csv.writer(final)
                     writer.writerow([person.idP, myid, person.date, finalbid, mycolor])
-                    final.close() # Cerrar coneccion a archivo para que otros threads la puedan usar
+                    final.close()  # Cerrar coneccion a archivo para que otros threads la puedan usar
 
                 produced.append(Produced(person.idP, myid, person.date, finalbid))  # meter a archivo comprador
                 print(stylize("CONSUMED", colored.fg(mycolor)))
@@ -146,6 +146,7 @@ class ConsumerThread(Thread):
                 if not queue:  # apagar thread si ya no hay nada en el buffer
                     print(stylize('queue is empty, and producer is stopped, thread shutting down...',
                                   colored.fg(mycolor)))
+
                     os._exit(0)
                     item_ok.wait()
                     space_ok.notify()
@@ -157,12 +158,12 @@ class ConsumerThread(Thread):
                     print("SHUTTING DOWN THREAD")
 
                 else:  # crear lead
-                    finalbid = random.randrange(myminbid, mymaxbid)
+                    finalbid = randrange(myminbid, mymaxbid)
                     person = queue.pop(0)
                     with open('comprador.csv', 'a+') as final:
                         writer = csv.writer(final)
                         writer.writerow([person.idP, myid, person.date, finalbid, mycolor])
-                        final.close() # Cerrar coneccion a archivo para que otros threads la puedan usar
+                        final.close()  # Cerrar coneccion a archivo para que otros threads la puedan usar
 
                     produced.append(Produced(person.idP, myid, person.date, finalbid))
 
@@ -174,16 +175,107 @@ class ConsumerThread(Thread):
                     time.sleep(1)
 
 
+llenando = True
 
 
+class ProducerThreadAlternance(Thread):
+    def __init__(self, color, ProducerID):
+        super(ProducerThreadAlternance, self).__init__()
+        self.name = color
+        self.ProducerID = ProducerID
+
+    def run(self):
+        global queue
+        global llenando
+        global personas
+        mycolor = self.name
+        UPid = self.ProducerID
+
+        while True:
+            while llenando:
+                qlock.acquire()
+                if len(queue) <= CAPACITY:
+                    if len(queue) == CAPACITY:
+                        print(stylize('queue is full, stop producing', colored.fg(mycolor)))
+                        llenando = False
+                        space_ok.wait()
+                        qlock.release()
+                        if len(queue) >= CAPACITY:
+                            print(stylize('oops, someone filled the space before me', colored.fg(mycolor)))
+                    if llenando and personas:
+                        if personas:
+                            person = personas.pop(0)
+                            print(stylize(str(person.idP) + ' ' + str(person.date), colored.fg(mycolor)))
+                            queue.append(person)  # <- insertar a mysql
+                            print(stylize(len(queue), colored.fg(mycolor)))
+                            item_ok.notify()  # notificar
+                            qlock.release()  # soltar
+                            time.sleep((random() + 1) * 1.5)
+                        else:
+
+                            item_ok.wait()  # Dejar de producir si ya no hay registros
+                            item_ok.notify()
+                            sys.exit()
+                            qlock.release()
+
+
+class ConsumerThreadAlternance(Thread):
+    def __init__(self, myid2, myminbid2, mymaxbid2, mycolor2, ConsumerID2):
+        super(ConsumerThreadAlternance, self).__init__()
+        self.myid2 = myid2
+        self.myminbid2 = myminbid2
+        self.mymaxbid2 = mymaxbid2
+        self.name2 = mycolor2
+        self.ConsumerID2 = ConsumerID2
+
+    def run(self):
+        global queue
+        global llenando
+        global produced
+        global personas
+        mycolor2 = self.name2
+        myid2 = self.myid2
+        myminbid2 = self.myminbid2
+        mymaxbid2 = self.mymaxbid2
+
+        while True:
+            while not llenando:
+                qlock.acquire()
+                if not queue:
+                    print(stylize('queue is empty, stop consuming', colored.fg(mycolor2)))
+                    llenando = True
+                    item_ok.wait()
+
+                    space_ok.notify()
+                    qlock.release()
+                    if not queue:
+                        print(stylize('oops, someone consumed the food before me', colored.fg(mycolor2)))
+                if not llenando:
+                    finalbid = randrange(myminbid2, mymaxbid2)  # Crear lead
+                    person = queue.pop(0)  # Sacar de Mysql
+
+                    with open('comprador.csv', 'a+') as final:
+                        writer = csv.writer(final)
+                        writer.writerow([person.idP, myid2, person.date, finalbid, mycolor2])
+                        final.close()  # Cerrar coneccion a archivo para que otros threads la puedan usar
+
+                    produced.append(Produced(person.idP, myid2, person.date, finalbid))  # meter a archivo comprador
+
+                    print(stylize("CONSUMED", colored.fg(mycolor2)))
+                    print(len(produced))
+                    print(len(queue))
+                    space_ok.notify()
+                    qlock.release()
+                    time.sleep((random() + 1) * 1.5)
 
 
 # buffSize productores consumerFile Alternance
 # 1        2           3            4
 producerList = []
-ColorList = ['green', 'red', 'blue', 'yellow', 'white', 'purple']
+ColorList = ['green', 'red', 'blue', 'yellow', 'white', 'magenta', 'green', 'red', 'blue', 'yellow', 'white', 'magenta', 'green', 'red', 'blue', 'yellow', 'white', 'magenta']
+
 for i in range(int(sys.argv[2])):
-    producer = ProducerThread(ColorList[i], i)
+    producer = ProducerThreadAlternance(ColorList[i], i)
     producerList.append(producer)
     producer.setDaemon(False)
     producer.start()
@@ -192,11 +284,12 @@ try:
     print("trying")
     consumerList = []
     for i in compradores:
-        consumer = ConsumerThread(i.idC, i.low, i.high, "blue", i)
+        consumer = ConsumerThreadAlternance(i.idC, i.low, i.high, "blue", i)
         producerList.append(consumer)
         consumer.start()
 except:
     print("No consumer file given, only producer threads will be generated")
+
 # print("DONE")
 # ConsumerThread(name='yellow', daemon=True).start()
 
