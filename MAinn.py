@@ -48,11 +48,6 @@ except:
 for b in range(len(idp)):
     personas.append(Personas(int(idp[b]), date[b]))
 
-tiempoEjec = []
-tiempoTotal = []
-producidos = []
-consumidos = []
-
 queue = []
 produced = []
 CAPACITY = int(sys.argv[1])
@@ -180,7 +175,12 @@ class ConsumerThread(Thread):
                     time.sleep(1)
 
 
-llenando = True
+# COSAS NUEVAS
+llenando = True  # IMPORTANTE, AGREGAR
+tiempoEjec = []
+tiempoTotal = []
+producidos = []
+consumidos = []
 
 
 class ProducerThreadAlternance(Thread):
@@ -284,7 +284,6 @@ ColorList = ['green', 'red', 'blue', 'yellow', 'white', 'magenta', 'green', 'red
 
 alternance = int(sys.argv[4])
 print("Runs up to this point")
-
 
 if alternance == 0:
     print("non alternance")
