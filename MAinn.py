@@ -210,6 +210,9 @@ class ProducerThreadAlternance(Thread):
                     if llenando and personas:
                         if personas:
                             person = personas.pop(0)
+
+# MySQL
+
                             print(stylize(str(person.idP) + ' ' + str(person.date), colored.fg(mycolor)))
                             queue.append(person)  # <- insertar a mysql
                             print(stylize(len(queue), colored.fg(mycolor)))
@@ -259,6 +262,8 @@ class ConsumerThreadAlternance(Thread):
                 if not llenando:
                     finalbid = randrange(myminbid2, mymaxbid2)  # Crear lead
                     person = queue.pop(0)  # Sacar de Mysql
+
+# MySQL
 
                     with open('comprador.csv', 'a+') as final:
                         writer = csv.writer(final)
