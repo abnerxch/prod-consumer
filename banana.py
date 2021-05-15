@@ -27,11 +27,11 @@ mycursor = mydb.cursor()
 
 mycursor.execute("CREATE DATABASE IF NOT EXISTS so")
 mycursor.execute("use so")
-mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS comprador(compra_id INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, FOREIGN KEY(lead_id) REFERENCES lead(lead_id), comprador VARCHAR(255), monto INT, fechahora TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute("CREATE TABLE IF NOT EXISTS lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute("CREATE TABLE IF NOT EXISTS copy_lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute("CREATE TABLE IF NOT EXISTS comprador(compra_id INT AUTO_INCREMENT PRIMARY KEY, id_file INT, comprador INT, monto INT, fechahora TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
 
+# CONSTRAINT fk_lead FOREIGN KEY(id_file) REFERENCES lead(id_file)
 # Information required to create a connection object
 dbServerIP = "0.0.0.0"  # IP address of the MySQL database server
 dbUserName = "root"  # User name of the MySQL database server
@@ -90,11 +90,14 @@ class Compradores:
         self.high = high
         self.compradorC = compradorC
 
+#file = ' '.join(sys.argv[3])
+
+#with open(sys.argv[3], 'r') as file:
+ #   contents = file.read()
 
 compradores = []
 try:
-    df = pd.read_csv('compradores.csv')
-
+    df = pd.read_csv(str(sys.argv[3]))
     col1 = df.id
     for a in range(len(col1)):
         print(col1[a])
@@ -228,28 +231,33 @@ class ConsumerThread(Thread):
                         print(stylize('oops, someone consumed the food before me', colored.fg(mycolor)))
                 finalbid = random.randrange(myminbid, mymaxbid)  # Crear lead
 
+                person = queue.pop(0)
+
+                # sqlCopyLead = "INSERT INTO copy_lead(lead_id, nombre, telefono, fecha, ciudad, productor_id, fechahora_ingesta) SELECT lead_id, nombre, telefono, fecha, ciudad, productor_id, fechahora_ingesta FROM lead LIMIT 1"
+
                 # ================ MySQL Space ==================
 
                 # try:
                 now = datetime.now()
                 dbConnection_comprador = mySQLConnectionPool.connection()
-                formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
-                mySQLCursor = dbConnection_comprador.cursor()
+                formatted_date = now.strftime('%Y-%m-%d %H:%M:%S') 
+
+                mycursor.execute("SELECT id_file FROM lead LIMIT 1")   
+                my_lead = mycursor.fetchone()  
+
+                sqlDropLead = "DELETE FROM lead LIMIT 1"
+
+                sqlInsertComprador = "INSERT INTO comprador (compra_id, id_file, comprador, monto, fechahora) values ('{}','{}','{}', '{}','{}')".format(random.sample((1,9999999),1),person.idP, mycomprador, finalbid, formatted_date)
+                # Obtain a cursor object
+                mySQLCursorComprador = dbConnection_comprador.cursor()
 
                 # Execute the SQL stament
-                mySQLCursor.execute(sqlReadLeadID)
-                starting_index = mySQLCursor.fetchone()[0]
-                sqlReadLeadID = "SELECT lead_id FROM lead LIMIT 1"
-                sqlDropLead = "DELETE FROM lead LIMIT 1"
-                sqlInsertComprador = "INSERT INTO comprador (id_file, comprador, monto, fecha_hora) values ('{}','{}','{}', '{}')".format(
-                    int(starting_index), str(mycomprador), int(finalbid), formatted_date)
-                # Obtain a cursor object
-
-                mySQLCursor.execute(sqlDropLead)
-                mySQLCursor.execute(sqlInsertComprador)
+                #mySQLCursorComprador.execute(sqlCopyLead)
+                mySQLCursorComprador.execute(sqlDropLead)
+                mySQLCursorComprador.execute(sqlInsertComprador)
 
                 # Close the cursor and connection objects
-                mySQLCursor.close()
+                mySQLCursorComprador.close()
                 dbConnection_comprador.close()
 
                 # except Exception as e:
@@ -258,7 +266,7 @@ class ConsumerThread(Thread):
 
                 # ================ End MySQL Space ==================
 
-                person = queue.pop(0)  # Sacar de Mysql
+                 # Sacar de Mysql
 
                 # with open('comprador.csv', 'a+') as final:
                 #    writer = csv.writer(final)
