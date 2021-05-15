@@ -175,7 +175,12 @@ class ConsumerThread(Thread):
                     time.sleep(1)
 
 
-llenando = True
+# COSAS NUEVAS
+llenando = True  # IMPORTANTE, AGREGAR
+tiempoEjec = []
+tiempoTotal = []
+producidos = []
+consumidos = []
 
 
 class ProducerThreadAlternance(Thread):
@@ -210,13 +215,14 @@ class ProducerThreadAlternance(Thread):
                             print(stylize(len(queue), colored.fg(mycolor)))
                             item_ok.notify()  # notificar
                             qlock.release()  # soltar
+
                             time.sleep((random() + 1) * 1.5)
                         else:
 
                             item_ok.wait()  # Dejar de producir si ya no hay registros
                             item_ok.notify()
-                            sys.exit()
                             qlock.release()
+                            time.sleep((random() + 1) * 1.5)
 
 
 class ConsumerThreadAlternance(Thread):
@@ -266,29 +272,54 @@ class ConsumerThreadAlternance(Thread):
                     print(len(queue))
                     space_ok.notify()
                     qlock.release()
+
                     time.sleep((random() + 1) * 1.5)
 
 
 # buffSize productores consumerFile Alternance
 # 1        2           3            4
 producerList = []
-ColorList = ['green', 'red', 'blue', 'yellow', 'white', 'magenta', 'green', 'red', 'blue', 'yellow', 'white', 'magenta', 'green', 'red', 'blue', 'yellow', 'white', 'magenta']
+ColorList = ['green', 'red', 'blue', 'yellow', 'white', 'magenta', 'green', 'red', 'blue', 'yellow', 'white', 'magenta',
+             'green', 'red', 'blue', 'yellow', 'white', 'magenta']
 
-for i in range(int(sys.argv[2])):
-    producer = ProducerThreadAlternance(ColorList[i], i)
-    producerList.append(producer)
-    producer.setDaemon(False)
-    producer.start()
+alternance = int(sys.argv[4])
+print("Runs up to this point")
 
-try:
-    print("trying")
-    consumerList = []
-    for i in compradores:
-        consumer = ConsumerThreadAlternance(i.idC, i.low, i.high, "blue", i)
-        producerList.append(consumer)
-        consumer.start()
-except:
-    print("No consumer file given, only producer threads will be generated")
+if alternance == 0:
+    print("non alternance")
+    for i in range(int(sys.argv[2])):
+        producer = ProducerThread(ColorList[i], i)
+        producerList.append(producer)
+        producer.setDaemon(False)
+        producer.start()
+
+    try:
+        print("trying")
+        consumerList = []
+        for i in compradores:
+            consumer = ConsumerThread(i.idC, i.low, i.high, "blue", i)
+            producerList.append(consumer)
+            consumer.start()
+    except:
+        print("No consumer file given, only producer threads will be generated")
+
+if alternance == 1:
+    print("alternance")
+    for i in range(int(sys.argv[2])):
+        producer = ProducerThreadAlternance(ColorList[i], i)
+        producerList.append(producer)
+        producer.setDaemon(False)
+        producer.start()
+
+    try:
+        print("trying")
+        consumerList = []
+        for i in compradores:
+            consumer = ConsumerThreadAlternance(i.idC, i.low, i.high, "blue", i)
+            producerList.append(consumer)
+            consumer.start()
+    except:
+        print("No consumer file given, only producer threads will be generated")
 
 # print("DONE")
 # ConsumerThread(name='yellow', daemon=True).start()
