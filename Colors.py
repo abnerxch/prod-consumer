@@ -58,10 +58,16 @@ space_ok = Condition(qlock)
 
 
 class ProducerThread(Thread):
+    def __init__(self, color, ProducerID):
+        super(ProducerThread, self).__init__()
+        self.name = color
+        self.ProducerID = ProducerID
+
     def run(self):
         global queue
         global personas
         mycolor = self.name
+        UPid = self.ProducerID  # IDENTIFICADOR UNICO
 
         while True:
             qlock.acquire()
@@ -89,16 +95,17 @@ class ProducerThread(Thread):
 
             item_ok.notify()
             qlock.release()
-            time.sleep(0)
+            time.sleep(1)
 
 
 class ConsumerThread(Thread):
-    def __init__(self, myid, myminbid, mymaxbid, mycolor):
+    def __init__(self, myid, myminbid, mymaxbid, mycolor, ConsumerID):
         super(ConsumerThread, self).__init__()
         self.myid = myid
         self.myminbid = myminbid
         self.mymaxbid = mymaxbid
         self.name = mycolor
+        self.ConsumerID = ConsumerID
 
     def run(self):
         global queue
@@ -143,7 +150,7 @@ class ConsumerThread(Thread):
                     item_ok.wait()
                     space_ok.notify()
                     # ANADI ESTO
-                    
+
                     # ^ANADI ESTO
                     qlock.release()
 
@@ -172,15 +179,16 @@ class ConsumerThread(Thread):
 producerList = []
 ColorList = ['green', 'red', 'blue', 'yellow', 'white', 'purple']
 for i in range(int(sys.argv[2])):
-    producer = ProducerThread(name=ColorList[i], daemon=False)
+    producer = ProducerThread(ColorList[i], i)
     producerList.append(producer)
+    producer.setDaemon(False)
     producer.start()
 
 try:
     print("trying")
     consumerList = []
     for i in compradores:
-        consumer = ConsumerThread(i.idC, i.low, i.high, "blue")
+        consumer = ConsumerThread(i.idC, i.low, i.high, "blue", i)
         producerList.append(consumer)
         consumer.start()
 except:
