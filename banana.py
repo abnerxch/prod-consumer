@@ -28,7 +28,7 @@ mycursor = mydb.cursor()
 mycursor.execute("CREATE DATABASE IF NOT EXISTS so")
 mycursor.execute("use so")
 mycursor.execute("CREATE TABLE IF NOT EXISTS lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-mycursor.execute("CREATE TABLE IF NOT EXISTS copy_lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+#mycursor.execute("CREATE TABLE IF NOT EXISTS copy_lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
 mycursor.execute("CREATE TABLE IF NOT EXISTS comprador(compra_id INT AUTO_INCREMENT PRIMARY KEY, id_file INT, comprador INT, monto INT, fechahora TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
 
 # CONSTRAINT fk_lead FOREIGN KEY(id_file) REFERENCES lead(id_file)
@@ -65,6 +65,12 @@ class Personas:
         self.date = date
         self.cityP = cityP
 
+class Compradores:
+    def __init__(self, idC, compradorC, low, high):
+        self.idC = idC
+        self.low = low
+        self.high = high
+        self.compradorC = compradorC
 
 class Produced:
     def __init__(self, idP, idC, fecha, bid):
@@ -81,20 +87,6 @@ phonep = df2.telefono
 date = df2.fecha
 cityp = df2.ciudad
 personas = []
-
-
-class Compradores:
-    def __init__(self, idC, compradorC, low, high):
-        self.idC = idC
-        self.low = low
-        self.high = high
-        self.compradorC = compradorC
-
-#file = ' '.join(sys.argv[3])
-
-#with open(sys.argv[3], 'r') as file:
- #   contents = file.read()
-
 compradores = []
 try:
     df = pd.read_csv(str(sys.argv[3]))

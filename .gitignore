@@ -5,6 +5,8 @@ __pycache__/
 
 # C extensions
 *.so
+.~lock.comprador.csv#
+.~lock.compradores.csv#
 
 # Distribution / packaging
 .Python
