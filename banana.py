@@ -13,43 +13,47 @@ import threading
 
 from datetime import datetime
 import pymysql
-from DBUtils.PooledDB import PooledDB # pip3 install DBUtils==1.3
+from DBUtils.PooledDB import PooledDB  # pip3 install DBUtils==1.3
 
 import mysql.connector
 
 mydb = mysql.connector.connect(
-  host="localhost",
-  user="root",
-  password="test123"
+    host="localhost",
+    user="root",
+    password="test123"
 )
 
 mycursor = mydb.cursor()
 
 mycursor.execute("CREATE DATABASE IF NOT EXISTS so")
 mycursor.execute("use so")
-mycursor.execute("CREATE TABLE IF NOT EXISTS lead(lead_id INT AUTO_INCREMENT PRIMARY KEY, id_file INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-mycursor.execute("CREATE TABLE IF NOT EXISTS comprador(compra_id INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, FOREIGN KEY(lead_id) REFERENCES lead(lead_id), comprador VARCHAR(255), monto INT, fechahora TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute(
+    "CREATE TABLE IF NOT EXISTS lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute(
+    "CREATE TABLE IF NOT EXISTS comprador(compra_id INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, FOREIGN KEY(lead_id) REFERENCES lead(lead_id), comprador VARCHAR(255), monto INT, fechahora TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
 
 # Information required to create a connection object
-dbServerIP              = "0.0.0.0"       # IP address of the MySQL database server
-dbUserName              = "root"            # User name of the MySQL database server
-dbUserPassword          = "test123"                # Password for the MySQL database user
-databaseToUse           = "so"    # Name of the MySQL database to be used
-charSet                 = "utf8mb4"         # Character set
-cusrorType              = pymysql.cursors.DictCursor
-Crawl_Info_Count        = int(sys.argv[1])
+dbServerIP = "0.0.0.0"  # IP address of the MySQL database server
+dbUserName = "root"  # User name of the MySQL database server
+dbUserPassword = "test123"  # Password for the MySQL database user
+databaseToUse = "so"  # Name of the MySQL database to be used
+charSet = "utf8mb4"  # Character set
+cusrorType = pymysql.cursors.DictCursor
+Crawl_Info_Count = int(sys.argv[1])
 
-mySQLConnectionPool = PooledDB(creator   = pymysql,     # Python function returning a connection or a Python module, both based on DB-API 2
-                               host      = dbServerIP,
-                               user      = dbUserName,
-                               password  = dbUserPassword,
-                               database  = databaseToUse,
-                               autocommit    = True,
-                               charset       = charSet,
-                               cursorclass   = cusrorType,
-                               blocking      = False,
-                               #maxconnections = Crawl_Info_Count
-                               ) 
+mySQLConnectionPool = PooledDB(creator=pymysql,
+                               # Python function returning a connection or a Python module, both based on DB-API 2
+                               host=dbServerIP,
+                               user=dbUserName,
+                               password=dbUserPassword,
+                               database=databaseToUse,
+                               autocommit=True,
+                               charset=charSet,
+                               cursorclass=cusrorType,
+                               blocking=False,
+                               # maxconnections = Crawl_Info_Count
+                               )
+
 
 # ============= End of utilities for MySQL ============================= 
 
@@ -60,14 +64,6 @@ class Personas:
         self.phoneP = phoneP
         self.date = date
         self.cityP = cityP
-
-
-class Compradores:
-    def __init__(self, idC, high, low):
-        self.idC = idC
-        self.high = high
-        self.low = low
-        #self.compradorC = compradorC
 
 
 class Produced:
@@ -85,32 +81,41 @@ phonep = df2.telefono
 date = df2.fecha
 cityp = df2.ciudad
 personas = []
+
+
+class Compradores:
+    def __init__(self, idC, compradorC, low, high):
+        self.idC = idC
+        self.low = low
+        self.high = high
+        self.compradorC = compradorC
+
+
 compradores = []
 try:
     df = pd.read_csv('compradores.csv')
-    print("hhh")
+
     col1 = df.id
     for a in range(len(col1)):
         print(col1[a])
-    print("hhhhhhhhhh")
-    col3 = df.bid_max
-    for a in range(len(col3)):
-        print(col3[a])
-    col2 = df.bid_min
+
+    col2 = df.comprador
     for a in range(len(col2)):
         print(col2[a])
-    print("hhhhhhhhhhhhhhhhhhhhhhh")
-    
-    print("hhhhhhhhhh")
-    """col4 = df.comprador
+
+    col3 = df.bid_min
+    for a in range(len(col3)):
+        print(col3[a])
+
+    col4 = df.bid_max
     for a in range(len(col4)):
-        print(col4[a])"""
-    print("hhhhhhhhhhhhhhhhhhhhhhh")
+        print(col4[a])
+
     for a in range(len(col1)):
-        print("aaaaa")
-        compradores.append(Compradores(col1[a], col3[a], col2[a]))
-        print("==")
-    print("hhhhh")
+        print("trying to append...")
+        compradores.append(Compradores(col1[a], col2[a], col3[a], col4[a]))
+        print("append successful")
+
 except:
     print("File not Found or Error in File Format")
 
@@ -159,20 +164,22 @@ class ProducerThread(Thread):
                     now = datetime.now()
                     dbConnection_in = mySQLConnectionPool.connection()
                     formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
-                    sqlInsertLead   = "INSERT INTO lead (id_file, nombre, telefono, fecha, ciudad, productor_id, fechahora_ingesta) values ('{}','{}','{}','{}','{}','{}','{}')".format(int(person.idP), str(person.nameP), str(person.phoneP), str(person.date), str(person.cityP), int(UPid), formatted_date) 
+                    sqlInsertLead = "INSERT INTO lead (lead_id, nombre, telefono, fecha, ciudad, productor_id, fechahora_ingesta) values ('{}','{}','{}','{}','{}','{}','{}')".format(
+                        int(person.idP), str(person.nameP), str(person.phoneP), str(person.date), str(person.cityP),
+                        int(UPid), formatted_date)
                     # Obtain a cursor object
-                    mySQLCursor = dbConnection_in.cursor()      
+                    mySQLCursor = dbConnection_in.cursor()
 
                     # Execute the SQL stament
-                    mySQLCursor.execute(sqlInsertLead)       
+                    mySQLCursor.execute(sqlInsertLead)
 
                     # Close the cursor and connection objects
                     mySQLCursor.close()
-                    dbConnection_in.close() 
-                    
+                    dbConnection_in.close()
+
                 except Exception as e:
                     print("Exception: %s" % e)
-                    #return 
+                    # return
 
                 # ============ End MySQL Space =====================
 
@@ -192,14 +199,13 @@ class ProducerThread(Thread):
 
 
 class ConsumerThread(Thread):
-    def __init__(self, myid, mycomprador, myminbid, mymaxbid, mycolor, ConsumerID):
+    def __init__(self, mycomprador, myminbid, mymaxbid, mycolor):
         super(ConsumerThread, self).__init__()
-        self.myid = myid
+
         self.mycomprador = mycomprador
         self.myminbid = myminbid
         self.mymaxbid = mymaxbid
         self.name = mycolor
-        self.ConsumerID = ConsumerID
 
     def run(self):
         global queue
@@ -207,7 +213,7 @@ class ConsumerThread(Thread):
         global personas
 
         mycolor = self.name
-        myid = self.myid
+
         mycomprador = self.mycomprador
         myminbid = self.myminbid
         mymaxbid = self.mymaxbid
@@ -221,44 +227,45 @@ class ConsumerThread(Thread):
                     if not queue:
                         print(stylize('oops, someone consumed the food before me', colored.fg(mycolor)))
                 finalbid = random.randrange(myminbid, mymaxbid)  # Crear lead
-                
 
                 # ================ MySQL Space ==================
-                
-                #try:
+
+                # try:
                 now = datetime.now()
                 dbConnection_comprador = mySQLConnectionPool.connection()
                 formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
-                sqlReadLeadID = "SELECT lead_id FROM lead LIMIT 1"
-                sqlDropLead = "DELETE FROM lead LIMIT 1"
-                sqlInsertComprador   = "INSERT INTO comprador (lead_id, comprador, monto, fecha_hora) values ('{}','{}','{}', '{}')".format(int(starting_index), str(mycomprador), int(finalbid),formatted_date) 
-                    # Obtain a cursor object
-                mySQLCursor = dbConnection_comprador.cursor()      
+                mySQLCursor = dbConnection_comprador.cursor()
 
-                    # Execute the SQL stament
+                # Execute the SQL stament
                 mySQLCursor.execute(sqlReadLeadID)
                 starting_index = mySQLCursor.fetchone()[0]
-                mySQLCursor.execute(sqlDropLead)
-                mySQLCursor.execute(sqlInsertComprador)       
+                sqlReadLeadID = "SELECT lead_id FROM lead LIMIT 1"
+                sqlDropLead = "DELETE FROM lead LIMIT 1"
+                sqlInsertComprador = "INSERT INTO comprador (id_file, comprador, monto, fecha_hora) values ('{}','{}','{}', '{}')".format(
+                    int(starting_index), str(mycomprador), int(finalbid), formatted_date)
+                # Obtain a cursor object
 
-                    # Close the cursor and connection objects
+                mySQLCursor.execute(sqlDropLead)
+                mySQLCursor.execute(sqlInsertComprador)
+
+                # Close the cursor and connection objects
                 mySQLCursor.close()
-                dbConnection_comprador.close() 
-                    
-                #except Exception as e:
+                dbConnection_comprador.close()
+
+                # except Exception as e:
                 #    print("Exception: %s" % e)
-                #return 
+                # return
 
                 # ================ End MySQL Space ==================
 
                 person = queue.pop(0)  # Sacar de Mysql
 
-                #with open('comprador.csv', 'a+') as final:
+                # with open('comprador.csv', 'a+') as final:
                 #    writer = csv.writer(final)
                 #    writer.writerow([person.idP, myid, person.date, finalbid, mycolor])
                 #    final.close() # Cerrar coneccion a archivo para que otros threads la puedan usar
 
-                produced.append(Produced(person.idP, myid, person.date, finalbid))  # meter a archivo comprador
+                produced.append(Produced(person.idP, mycomprador, person.date, finalbid))  # meter a archivo comprador
                 print(stylize("CONSUMED", colored.fg(mycolor)))
                 print(len(produced))
                 print(len(queue))
@@ -284,12 +291,12 @@ class ConsumerThread(Thread):
                 else:  # crear lead
                     finalbid = random.randrange(myminbid, mymaxbid)
                     person = queue.pop(0)
-                    #with open('comprador.csv', 'a+') as final:
+                    # with open('comprador.csv', 'a+') as final:
                     #    writer = csv.writer(final)
                     #    writer.writerow([person.idP, myid, person.date, finalbid, mycolor])
                     #    final.close() # Cerrar coneccion a archivo para que otros threads la puedan usar
 
-                    produced.append(Produced(person.idP, myid, person.date, finalbid))
+                    produced.append(Produced(person.idP, mycomprador, person.date, finalbid))
 
                     print(stylize("CONSUMED", colored.fg(mycolor)))
                     print(stylize(len(queue), colored.fg(mycolor)))
@@ -309,14 +316,14 @@ for i in range(int(sys.argv[2])):
     producer.setDaemon(False)
     producer.start()
 
-[thread.join() for thread in producerList]
-
+# [thread.join() for thread in producerList]
 
 try:
     print("trying")
     consumerList = []
     for i in compradores:
-        consumer = ConsumerThread(i.idC, i.low, i.high, "blue", i)
+        #  mycomprador, myminbid, mymaxbid, mycolor
+        consumer = ConsumerThread(i.idC, i.low, i.high, "blue")  # falta pasar parametros
         producerList.append(consumer)
         consumer.start()
         [thread.join() for thread in consumerList]
