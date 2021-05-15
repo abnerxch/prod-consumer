@@ -131,7 +131,7 @@ class ConsumerThread(Thread):
                 with open('comprador.csv', 'a+') as final:
                     writer = csv.writer(final)
                     writer.writerow([person.idP, myid, person.date, finalbid, mycolor])
-                    final.close()
+                    final.close() # Cerrar coneccion a archivo para que otros threads la puedan usar
 
                 produced.append(Produced(person.idP, myid, person.date, finalbid))  # meter a archivo comprador
                 print(stylize("CONSUMED", colored.fg(mycolor)))
@@ -162,7 +162,7 @@ class ConsumerThread(Thread):
                     with open('comprador.csv', 'a+') as final:
                         writer = csv.writer(final)
                         writer.writerow([person.idP, myid, person.date, finalbid, mycolor])
-                        final.close()
+                        final.close() # Cerrar coneccion a archivo para que otros threads la puedan usar
 
                     produced.append(Produced(person.idP, myid, person.date, finalbid))
 
