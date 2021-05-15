@@ -29,9 +29,11 @@ mycursor = mydb.cursor()
 
 mycursor.execute("CREATE DATABASE IF NOT EXISTS so")
 mycursor.execute("use so")
-mycursor.execute("CREATE TABLE IF NOT EXISTS lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-#mycursor.execute("CREATE TABLE IF NOT EXISTS copy_lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-mycursor.execute("CREATE TABLE IF NOT EXISTS comprador(compra_id INT AUTO_INCREMENT PRIMARY KEY, id_file INT, comprador INT, monto INT, fechahora TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute(
+    "CREATE TABLE IF NOT EXISTS lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+# mycursor.execute("CREATE TABLE IF NOT EXISTS copy_lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute(
+    "CREATE TABLE IF NOT EXISTS comprador(compra_id INT AUTO_INCREMENT PRIMARY KEY, id_file INT, comprador INT, monto INT, fechahora TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
 
 # CONSTRAINT fk_lead FOREIGN KEY(id_file) REFERENCES lead(id_file)
 # Information required to create a connection object
@@ -67,6 +69,7 @@ class Personas:
         self.date = date
         self.cityP = cityP
 
+
 class Produced:
     def __init__(self, idP, idC, fecha, bid):
         self.idP = idP
@@ -74,7 +77,8 @@ class Produced:
         self.fecha = fecha
         self.bid = bid
 
-df2 = pd.read_csv('personas.csv') # Esto sí va así quemado
+
+df2 = pd.read_csv('personas.csv')  # Esto sí va así quemado
 idp = df2.id
 namep = df2.nombre
 phonep = df2.telefono
@@ -82,12 +86,14 @@ date = df2.fecha
 cityp = df2.ciudad
 personas = []
 
+
 class Compradores:
     def __init__(self, idC, compradorC, low, high):
         self.idC = idC
         self.low = low
         self.high = high
         self.compradorC = compradorC
+
 
 compradores = []
 try:
@@ -113,6 +119,9 @@ CAPACITY = int(sys.argv[1])
 qlock = Lock()
 item_ok = Condition(qlock)
 space_ok = Condition(qlock)
+timeConsumer = []
+timeProducer = []
+timeAll = []
 
 
 class ProducerThread(Thread):
@@ -126,6 +135,7 @@ class ProducerThread(Thread):
         global personas
         mycolor = self.name
         UPid = self.ProducerID  # IDENTIFICADOR UNICO
+        timeach = []
 
         while True:
             qlock.acquire()
@@ -138,6 +148,7 @@ class ProducerThread(Thread):
                     print(stylize('oops, someone filled the space before me', colored.fg(mycolor)))
 
             if personas:  # si todavia existen registros, produzco
+                startTimeP = time.time()  # INICIO TIEMPO
                 person = personas.pop(0)
                 print(stylize(str(person.idP) + ' ' + str(person.date) + ' ' + str(UPid), colored.fg(mycolor)))
                 queue.append(person)  # insertar a mysql
@@ -166,6 +177,15 @@ class ProducerThread(Thread):
                     # return
 
                 # ============ End MySQL Space =====================
+                endTimeP = time.time()
+                timeTakenP = endTimeP - startTimeP
+                timeach.append(timeTakenP)
+                timeAll.append(timeTakenP)
+                print(stylize("ROWS PRODUCED: " + str(len(timeach)) + " " + mycolor, colored.fg(mycolor)))
+                AverageTimeP = sum(timeach) / len(timeach)
+                print(stylize("AVG TIME TAKEN TO PRODUCE: " + str(AverageTimeP) + " " + mycolor, colored.fg(mycolor)))
+                totalTime = sum(timeAll)
+                print("TOTAL PROGRAM TIME: " + str(totalTime))
 
                 print(stylize(len(queue), colored.fg(mycolor)))
             else:
@@ -195,7 +215,8 @@ class ConsumerThread(Thread):
         global queue
         global produced
         global personas
-
+        global timeAll
+        timeachC = []
         mycolor = self.name
 
         mycomprador = self.mycomprador
@@ -210,8 +231,8 @@ class ConsumerThread(Thread):
                     item_ok.wait()
                     if not queue:
                         print(stylize('oops, someone consumed the food before me', colored.fg(mycolor)))
+                startTimeC = time.time()
                 finalbid = random.randrange(myminbid, mymaxbid)  # Crear lead
-
                 person = queue.pop(0)
 
                 # sqlCopyLead = "INSERT INTO copy_lead(lead_id, nombre, telefono, fecha, ciudad, productor_id, fechahora_ingesta) SELECT lead_id, nombre, telefono, fecha, ciudad, productor_id, fechahora_ingesta FROM lead LIMIT 1"
@@ -221,19 +242,20 @@ class ConsumerThread(Thread):
                 # try:
                 now = datetime.now()
                 dbConnection_comprador = mySQLConnectionPool.connection()
-                formatted_date = now.strftime('%Y-%m-%d %H:%M:%S') 
+                formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
 
-                mycursor.execute("SELECT id_file FROM lead LIMIT 1")   
-                my_lead = mycursor.fetchone()  
+                mycursor.execute("SELECT id_file FROM lead LIMIT 1")
+                my_lead = mycursor.fetchone()
 
                 sqlDropLead = "DELETE FROM lead LIMIT 1"
 
-                sqlInsertComprador = "INSERT INTO comprador (compra_id, id_file, comprador, monto, fechahora) values ('{}','{}','{}', '{}','{}')".format(random.sample((1,9999999),1),person.idP, mycomprador, finalbid, formatted_date)
+                sqlInsertComprador = "INSERT INTO comprador (compra_id, id_file, comprador, monto, fechahora) values ('{}','{}','{}', '{}','{}')".format(
+                    random.sample((1, 9999999), 1), person.idP, mycomprador, finalbid, formatted_date)
                 # Obtain a cursor object
                 mySQLCursorComprador = dbConnection_comprador.cursor()
 
                 # Execute the SQL stament
-                #mySQLCursorComprador.execute(sqlCopyLead)
+                # mySQLCursorComprador.execute(sqlCopyLead)
                 mySQLCursorComprador.execute(sqlDropLead)
                 mySQLCursorComprador.execute(sqlInsertComprador)
 
@@ -247,7 +269,7 @@ class ConsumerThread(Thread):
 
                 # ================ End MySQL Space ==================
 
-                 # Sacar de Mysql
+                # Sacar de Mysql
 
                 # with open('comprador.csv', 'a+') as final:
                 #    writer = csv.writer(final)
@@ -256,6 +278,13 @@ class ConsumerThread(Thread):
 
                 produced.append(Produced(person.idP, mycomprador, person.date, finalbid))  # meter a archivo comprador
                 print(stylize("CONSUMED", colored.fg(mycolor)))
+                endTimeC = time.time()
+                timeTakenC = endTimeC - startTimeC
+                timeAll.append(timeTakenC)
+                timeachC.append(timeTakenC)
+                print(stylize("ROWS CONSUMED: "+ str(len(timeachC)) + " " + mycolor, colored.fg(mycolor)))
+                totalTime = sum(timeAll)
+                print("TOTAL PROGRAM TIME: " + str(totalTime))
                 print(len(produced))
                 print(len(queue))
                 space_ok.notify()
@@ -278,6 +307,7 @@ class ConsumerThread(Thread):
                     print("SHUTTING DOWN THREAD")
 
                 else:  # crear lead
+                    startTimeC = time.time()
                     finalbid = random.randrange(myminbid, mymaxbid)
                     person = queue.pop(0)
                     # with open('comprador.csv', 'a+') as final:
@@ -288,6 +318,13 @@ class ConsumerThread(Thread):
                     produced.append(Produced(person.idP, mycomprador, person.date, finalbid))
 
                     print(stylize("CONSUMED", colored.fg(mycolor)))
+                    endTimeC = time.time()
+                    timeTakenC = endTimeC - startTimeC
+                    timeAll.append(timeTakenC)
+                    timeachC.append(timeTakenC)
+                    print(stylize("ROWS CONSUMED: " + str(len(timeachC)) + " " + mycolor, colored.fg(mycolor)))
+                    totalTime = sum(timeAll)
+                    print("TOTAL PROGRAM TIME: " + str(totalTime))
                     print(stylize(len(queue), colored.fg(mycolor)))
                     print(len(produced))
                     space_ok.notify()
@@ -297,8 +334,6 @@ class ConsumerThread(Thread):
 
 # COSAS NUEVAS
 llenando = True  # IMPORTANTE, AGREGAR
-tiempoEjec = []
-tiempoTotal = []
 producidos = []
 consumidos = []
 
@@ -313,6 +348,7 @@ class ProducerThreadAlternance(Thread):
         global queue
         global llenando
         global personas
+        timeachP = []
         mycolor = self.name
         UPid = self.ProducerID
 
@@ -329,6 +365,7 @@ class ProducerThreadAlternance(Thread):
                             print(stylize('oops, someone filled the space before me', colored.fg(mycolor)))
                     if llenando and personas:
                         if personas:
+                            startTimep = time.time()
                             person = personas.pop(0)
 
                             print(stylize(str(person.idP) + ' ' + str(person.date), colored.fg(mycolor)))
@@ -341,7 +378,8 @@ class ProducerThreadAlternance(Thread):
                                 dbConnection_in = mySQLConnectionPool.connection()
                                 formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
                                 sqlInsertLead = "INSERT INTO lead (lead_id, nombre, telefono, fecha, ciudad, productor_id, fechahora_ingesta) values ('{}','{}','{}','{}','{}','{}','{}')".format(
-                                    int(person.idP), str(person.nameP), str(person.phoneP), str(person.date), str(person.cityP),
+                                    int(person.idP), str(person.nameP), str(person.phoneP), str(person.date),
+                                    str(person.cityP),
                                     int(UPid), formatted_date)
                                 # Obtain a cursor object
                                 mySQLCursor = dbConnection_in.cursor()
@@ -358,7 +396,17 @@ class ProducerThreadAlternance(Thread):
                                 # return
 
                             # ============ End MySQL Space =====================
+                            endTimeP = time.time()
+                            timeTakenP = endTimeP - startTimep
+                            timeachP.append(timeTakenP)
+                            timeAll.append(timeTakenP)
 
+                            AverageTimeTakenP = sum(timeachP) / len(timeachP)
+                            TotalTime = sum(timeAll)
+
+                            print(stylize("ROWS PRODUCED: " + str(len(timeachP)) + " " + mycolor, colored.fg(mycolor)))
+                            print(stylize("Average Time taken to Produce: " + str(AverageTimeTakenP) + " " + mycolor, colored.fg(mycolor)))
+                            print("Total Time: " + str(TotalTime))
                             print(stylize(len(queue), colored.fg(mycolor)))
                             item_ok.notify()  # notificar
                             qlock.release()  # soltar
@@ -385,6 +433,7 @@ class ConsumerThreadAlternance(Thread):
         global llenando
         global produced
         global personas
+        timeachC = []
         mycolor = self.name
         mycomprador = self.mycomprador
         myminbid = self.myminbid
@@ -403,6 +452,7 @@ class ConsumerThreadAlternance(Thread):
                     if not queue:
                         print(stylize('oops, someone consumed the food before me', colored.fg(mycolor)))
                 if not llenando:
+                    startTimeC = time.time()
                     finalbid = randrange(myminbid, mymaxbid)  # Crear lead
                     person = queue.pop(0)  # Sacar de Mysql
 
@@ -411,19 +461,20 @@ class ConsumerThreadAlternance(Thread):
                     # try:
                     now = datetime.now()
                     dbConnection_comprador = mySQLConnectionPool.connection()
-                    formatted_date = now.strftime('%Y-%m-%d %H:%M:%S') 
+                    formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
 
-                    mycursor.execute("SELECT id_file FROM lead LIMIT 1")   
-                    my_lead = mycursor.fetchone()  
+                    mycursor.execute("SELECT id_file FROM lead LIMIT 1")
+                    my_lead = mycursor.fetchone()
 
                     sqlDropLead = "DELETE FROM lead LIMIT 1"
 
-                    sqlInsertComprador = "INSERT INTO comprador (compra_id, id_file, comprador, monto, fechahora) values ('{}','{}','{}', '{}','{}')".format(random.sample((1,9999999),1),person.idP, mycomprador, finalbid, formatted_date)
+                    sqlInsertComprador = "INSERT INTO comprador (compra_id, id_file, comprador, monto, fechahora) values ('{}','{}','{}', '{}','{}')".format(
+                        random.sample((1, 9999999), 1), person.idP, mycomprador, finalbid, formatted_date)
                     # Obtain a cursor object
                     mySQLCursorComprador = dbConnection_comprador.cursor()
 
                     # Execute the SQL stament
-                    #mySQLCursorComprador.execute(sqlCopyLead)
+                    # mySQLCursorComprador.execute(sqlCopyLead)
                     mySQLCursorComprador.execute(sqlDropLead)
                     mySQLCursorComprador.execute(sqlInsertComprador)
 
@@ -437,14 +488,23 @@ class ConsumerThreadAlternance(Thread):
 
                     # ================ End MySQL Space ==================
 
-                    #with open('comprador.csv', 'a+') as final:
+                    # with open('comprador.csv', 'a+') as final:
                     #    writer = csv.writer(final)
                     #    writer.writerow([person.idP, mycomprador, person.date, finalbid, mycolor])
                     #    final.close()  # Cerrar coneccion a archivo para que otros threads la puedan usar
 
-                    produced.append(Produced(person.idP, mycomprador, person.date, finalbid))  # meter a archivo comprador
+                    produced.append(
+                        Produced(person.idP, mycomprador, person.date, finalbid))  # meter a archivo comprador
 
                     print(stylize("CONSUMED", colored.fg(mycolor)))
+                    endTimeC = time.time()
+                    timeTakenC = endTimeC - startTimeC
+                    timeachC.append(timeTakenC)
+                    timeAll.append(timeTakenC)
+                    TotalTime = sum(timeAll)
+
+                    print(stylize("ROWS PRODUCED: " + str(len(timeachC)) + " " + mycolor, colored.fg(mycolor)))
+                    print("Total Time: " + str(TotalTime))
                     print(len(produced))
                     print(len(queue))
                     space_ok.notify()
