@@ -29,11 +29,9 @@ mycursor = mydb.cursor()
 
 mycursor.execute("CREATE DATABASE IF NOT EXISTS so")
 mycursor.execute("use so")
-mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-# mycursor.execute("CREATE TABLE IF NOT EXISTS copy_lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS comprador(compra_id INT AUTO_INCREMENT PRIMARY KEY, id_file INT, comprador INT, monto INT, fechahora TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute("CREATE TABLE IF NOT EXISTS lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute("CREATE TABLE IF NOT EXISTS copy_lead(id_file INT AUTO_INCREMENT PRIMARY KEY, lead_id INT, nombre VARCHAR(255), telefono VARCHAR(255), fecha VARCHAR(255), ciudad VARCHAR(255), productor_id INT, fechahora_ingesta TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+mycursor.execute("CREATE TABLE IF NOT EXISTS comprador(compra_id INT AUTO_INCREMENT PRIMARY KEY, id_file INT, comprador INT, monto INT, fechahora TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
 
 # CONSTRAINT fk_lead FOREIGN KEY(id_file) REFERENCES lead(id_file)
 # Information required to create a connection object
@@ -177,6 +175,9 @@ class ProducerThread(Thread):
                     # return
 
                 # ============ End MySQL Space =====================
+
+                # mycursor.execute("INSERT INTO copy_lead SELECT * FROM lead;")
+
                 endTimeP = time.time()
                 timeTakenP = endTimeP - startTimeP
                 timeach.append(timeTakenP)
@@ -396,6 +397,9 @@ class ProducerThreadAlternance(Thread):
                                 # return
 
                             # ============ End MySQL Space =====================
+
+                            # mycursor.execute("INSERT INTO copy_lead SELECT * FROM lead;")
+
                             endTimeP = time.time()
                             timeTakenP = endTimeP - startTimep
                             timeachP.append(timeTakenP)
@@ -411,13 +415,13 @@ class ProducerThreadAlternance(Thread):
                             item_ok.notify()  # notificar
                             qlock.release()  # soltar
 
-                            time.sleep(1)
+                            time.sleep(0.5)
                         else:
 
                             item_ok.wait()  # Dejar de producir si ya no hay registros
                             item_ok.notify()
                             qlock.release()
-                            time.sleep(1)
+                            time.sleep(0.5)
 
 
 class ConsumerThreadAlternance(Thread):
@@ -510,7 +514,7 @@ class ConsumerThreadAlternance(Thread):
                     space_ok.notify()
                     qlock.release()
 
-                    time.sleep(1)
+                    time.sleep(0.5)
 
 
 # buffSize productores consumerFile Alternance
