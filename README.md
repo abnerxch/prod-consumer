@@ -51,3 +51,18 @@ Ejemplo:
 ```python
 python3 MAinn.py 100 5 consumidores.csv 1
 ```
+
+# Developers :man_technologist:
+
+[Abner Xocop Chacach](https://github.com/abnerxch) :ghost:
+
+[Tirso Córdova](https://github.com/Tirsocb) :robot:
+
+# Referencias :pen:
+
+[rahulrajaram](https://gist.github.com/rahulrajaram/5934d2b786ed2c29dc418fafaa2830ad)
+
+[ckhung](https://gist.github.com/ckhung/c5c155836e9485bb85e42d4f41027676)
+
+# License :card_file_box:
+[MIT](https://choosealicense.com/licenses/mit/)
